@@ -1,0 +1,10 @@
+{
+  "description": "Generate stunning designs effortlessly from images and prompts, empowering designers and creatives to enhance their workflow and inspire new ideas.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
