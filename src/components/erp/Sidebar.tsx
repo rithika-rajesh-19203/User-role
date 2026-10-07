@@ -28,15 +28,15 @@ const moduleSections = [
   "Subscriptions", "Purchases", "Travel & Expense",
 ];
 
-const usersRolesScreens: Screen[] = ["users", "roles", "new-role", "request-access", "my-role-requests"];
+const usersRolesScreens: Screen[] = ["users", "roles", "new-role", "my-role-requests"];
 
 export default function Sidebar({ current, onNavigate }: Props) {
   const expanded = usersRolesScreens.includes(current);
 
   return (
-    <div className="w-[220px] shrink-0 bg-white border-r border-gray-200 overflow-y-auto">
+    <div className="zf-sidebar w-[220px] shrink-0 border-r overflow-y-auto">
       <div className="pt-4 pb-6">
-        <div className="px-4 pb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+        <div className="px-4 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-[0.18em]">
           Organization Settings
         </div>
 
@@ -44,7 +44,7 @@ export default function Sidebar({ current, onNavigate }: Props) {
           if (item.key === "users-roles") {
             return (
               <div key="users-roles">
-                <button className="w-full flex items-center gap-1 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                <button className="w-full flex items-center gap-1 px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
                   {expanded ? <ChevronDown size={13} className="text-gray-400" /> : <ChevronRight size={13} className="text-gray-400" />}
                   <span>{item.label}</span>
                 </button>
@@ -54,14 +54,14 @@ export default function Sidebar({ current, onNavigate }: Props) {
                       const isActive =
                         child.key === current ||
                         (child.key === "roles" && current === "new-role") ||
-                        (child.key === "users" && ["request-access", "my-role-requests"].includes(current));
+                        (child.key === "users" && current === "my-role-requests");
                       return (
                         <button
                           key={child.label}
                           onClick={() => child.key && onNavigate(child.key)}
                           className={`w-full text-left px-8 py-1.5 text-sm ${
                             isActive
-                              ? "bg-blue-600 text-white font-medium"
+                              ? "bg-[#eef4ff] text-[#2959d6] font-medium border-r-2 border-r-[#2959d6]"
                               : "text-gray-600 hover:bg-gray-50"
                           }`}
                         >
@@ -75,18 +75,18 @@ export default function Sidebar({ current, onNavigate }: Props) {
             );
           }
           return (
-            <button key={item.label} className="w-full flex items-center gap-1 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+            <button key={item.label} className="w-full flex items-center gap-1 px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
               <ChevronRight size={13} className="text-gray-400" />
               <span>{item.label}</span>
             </button>
           );
         })}
 
-        <div className="px-4 pt-5 pb-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+        <div className="px-4 pt-5 pb-2 text-[10px] font-semibold text-slate-400 uppercase tracking-[0.18em]">
           Module Settings
         </div>
         {moduleSections.map((label) => (
-          <button key={label} className="w-full flex items-center gap-1 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+          <button key={label} className="w-full flex items-center gap-1 px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
             <ChevronRight size={13} className="text-gray-400" />
             <span>{label}</span>
           </button>

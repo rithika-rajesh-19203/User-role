@@ -1,17 +1,129 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ChevronDown, MoreHorizontal, Plus, X,
-  Shield, ChevronRight, Check,
+  Shield, ChevronRight, Check, FileText,
 } from "lucide-react";
 import type { Screen } from "../types";
-import { usersData, allRoles } from "../RequestModal";
+import { usersData, allRoles } from "../requestAccessData";
+
+type AccessPeriod =
+  | { type: "custom"; startDate: string; endDate: string }
+  | { type: "no-expiry" };
+
+interface ApprovalRequest {
+  id: string;
+  by: string;
+  requesterEmail: string;
+  requestedFor: string;
+  initials: string;
+  color: string;
+  access: string;
+  currentRole: string;
+  accessType: string;
+  department: string;
+  reason: string;
+  accessPeriod: AccessPeriod;
+  status: "Pending Approval" | "Approved" | "Rejected";
+  submitted: string;
+  fallback: string;
+  rejectedReason?: string;
+}
 
 /* requests where Rithika is an approver */
-const myApprovals = [
-  { id: "AR-000124", by: "Kavya Srinivasan", initials: "KS", color: "bg-indigo-500",  access: "Accounts Payable Manager", validity: "03 Sep – 30 Sep 2026", status: "Pending Approval", submitted: "02 Sep 2026", fallback: "Employee"   },
-  { id: "AR-000123", by: "Rahul Verma",      initials: "RV", color: "bg-emerald-600", access: "Purchases Module",          validity: "Ongoing",              status: "Pending Approval", submitted: "01 Sep 2026", fallback: "Employee"   },
-  { id: "AR-000116", by: "Anjali Sharma",    initials: "AS", color: "bg-purple-500",  access: "Approve Payments",          validity: "15 Aug – 15 Sep 2026", status: "Approved",         submitted: "14 Aug 2026", fallback: "Accountant" },
-  { id: "AR-000112", by: "Vikram Nair",      initials: "VN", color: "bg-rose-500",    access: "Manufacturing Manager",     validity: "Ongoing",              status: "Rejected",         submitted: "10 Aug 2026", fallback: "Employee"   },
+const defaultCustomAccessPeriod: AccessPeriod = {
+  type: "custom",
+  startDate: "2026-09-03",
+  endDate: "2026-09-30",
+};
+
+function formatShortDateLabel(value: string) {
+  const [year, month, day] = value.split("-");
+  const monthLabel = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(month) - 1];
+  return `${day} ${monthLabel} ${year}`;
+}
+
+function formatAccessPeriod(accessPeriod: AccessPeriod) {
+  if (accessPeriod.type === "no-expiry") {
+    return "No expiry";
+  }
+
+  return `${formatShortDateLabel(accessPeriod.startDate)} – ${formatShortDateLabel(accessPeriod.endDate)}`;
+}
+
+function getRoleAfterExpiry(fallbackRole: string, accessPeriod: AccessPeriod) {
+  return accessPeriod.type === "no-expiry" ? "Not applicable" : fallbackRole;
+}
+
+const myApprovals: ApprovalRequest[] = [
+  {
+    id: "AR-000124",
+    by: "Kavya Srinivasan",
+    requesterEmail: "kavya.srinivasan@company.com",
+    requestedFor: "Kavya Srinivasan",
+    initials: "KS",
+    color: "bg-indigo-500",
+    access: "Accounts Payable Manager",
+    currentRole: "Accountant",
+    accessType: "Temporary elevation",
+    department: "Finance Operations",
+    reason: "Need temporary approval authority to clear supplier invoices, manage exceptions, and avoid payment delays during quarter close.",
+    accessPeriod: { type: "custom", startDate: "2026-09-03", endDate: "2026-09-30" },
+    status: "Pending Approval",
+    submitted: "02 Sep 2026, 03:20 PM",
+    fallback: "Employee",
+  },
+  {
+    id: "AR-000123",
+    by: "Rahul Verma",
+    requesterEmail: "rahul.verma@company.com",
+    requestedFor: "Nisha Patel",
+    initials: "RV",
+    color: "bg-emerald-600",
+    access: "Purchases Module",
+    currentRole: "Employee",
+    accessType: "Permanent assignment",
+    department: "Procurement",
+    reason: "Requesting module access for the new procurement coordinator so purchase requests and vendor follow-ups can move without manager handoffs.",
+    accessPeriod: { type: "no-expiry" },
+    status: "Pending Approval",
+    submitted: "01 Sep 2026, 11:05 AM",
+    fallback: "Employee",
+  },
+  {
+    id: "AR-000116",
+    by: "Anjali Sharma",
+    requesterEmail: "anjali.sharma@company.com",
+    requestedFor: "Anjali Sharma",
+    initials: "AS",
+    color: "bg-purple-500",
+    access: "Approve Payments",
+    currentRole: "Accountant",
+    accessType: "Temporary elevation",
+    department: "Finance",
+    reason: "Covering finance approvals while the primary approver is on leave and month-end settlements must continue without delay.",
+    accessPeriod: { type: "custom", startDate: "2026-08-15", endDate: "2026-09-15" },
+    status: "Approved",
+    submitted: "14 Aug 2026, 02:07 PM",
+    fallback: "Accountant",
+  },
+  {
+    id: "AR-000112",
+    by: "Vikram Nair",
+    requesterEmail: "vikram.nair@company.com",
+    requestedFor: "Vikram Nair",
+    initials: "VN",
+    color: "bg-rose-500",
+    access: "Manufacturing Manager",
+    currentRole: "Employee",
+    accessType: "Permanent change",
+    department: "Manufacturing",
+    reason: "Requested an organizational role change to oversee production planning, shift exceptions, and supervisor approvals.",
+    accessPeriod: { type: "no-expiry" },
+    status: "Rejected",
+    submitted: "10 Aug 2026, 10:40 AM",
+    fallback: "Employee",
+    rejectedReason: "This request was declined because the manufacturing transition is not active yet and the elevated role is not required at this stage.",
+  },
 ];
 
 const statusColors: Record<string, string> = {
@@ -25,7 +137,7 @@ const statusColors: Record<string, string> = {
 /* ─── Status badge ─── */
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center text-xs font-medium border rounded-full px-2 py-0.5 whitespace-nowrap ${statusColors[status] ?? "text-gray-500 bg-gray-50 border-gray-200"}`}>
+    <span className={`zf-status-badge inline-flex items-center text-xs font-medium border rounded-sm px-2 py-0.5 whitespace-nowrap ${statusColors[status] ?? "text-gray-500 bg-gray-50 border-gray-200"}`}>
       {status}
     </span>
   );
@@ -36,8 +148,13 @@ function TableHead({ cols }: { cols: string[] }) {
   return (
     <thead>
       <tr className="border-b border-gray-200">
-        {cols.map(c => (
-          <th key={c} className="text-left py-2.5 pr-4 font-medium text-gray-400 text-xs uppercase tracking-wide whitespace-nowrap">{c}</th>
+        {cols.map((c, index) => (
+          <th
+            key={c}
+            className={`text-left py-2.5 pr-4 font-medium text-gray-400 text-xs uppercase tracking-wide whitespace-nowrap ${index === 0 ? "pl-0" : ""}`}
+          >
+            {c}
+          </th>
         ))}
         <th />
       </tr>
@@ -122,7 +239,7 @@ function Checkbox({ checked, onChange, disabled = false }: { checked: boolean; o
   );
 }
 
-/* ─── Invite drawer ─── */
+/* ─── Invite popup ─── */
 function InviteDrawer({ onClose }: { onClose: () => void }) {
   const [email, setEmail]         = useState("");
   const [role,  setRole]          = useState("Accountant");
@@ -139,15 +256,16 @@ function InviteDrawer({ onClose }: { onClose: () => void }) {
   const noneActive = !canSelf && !canOthers;
 
   return (
-    <div className="absolute inset-0 z-30 flex">
-      <div className="flex-1 bg-black/20" onClick={onClose} />
-      <div className="w-[420px] bg-white border-l border-gray-200 flex flex-col shadow-xl">
-        <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Invite User</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
-        </div>
+    <div className="fixed inset-0 z-40">
+      <div className="absolute inset-0 zf-scrim" onClick={onClose} />
+      <div className="relative flex h-full items-center justify-center px-4 py-8">
+        <div className="w-full max-w-[640px] max-h-full overflow-hidden rounded-2xl zf-elevated flex flex-col">
+          <div className="px-6 py-5 border-b border-gray-200 flex items-center justify-between shrink-0">
+            <h2 className="text-base font-semibold text-gray-900">Invite User</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+          </div>
 
-        <div className="flex-1 px-6 py-5 space-y-5 overflow-y-auto">
+          <div className="flex-1 px-6 py-5 space-y-5 overflow-y-auto">
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -276,49 +394,194 @@ function InviteDrawer({ onClose }: { onClose: () => void }) {
               </p>
             )}
           </div>
-        </div>
+            </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-          <button onClick={onClose} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Send Invite</button>
+          <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end shrink-0">
+              <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={onClose} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Send Invite</button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
   );
 }
 
 /* ─── Approver review panel ─── */
 type Decision = "approve" | "reject" | "info" | null;
 
-const gainedPerms  = ["Create Bills", "Approve Payments", "View Sales Orders"];
-const lostPerms    = ["User Management", "Admin Panel Access"];
+function ReviewSectionTitle({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {description && <p className="mt-1 text-sm leading-6 text-gray-500">{description}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
 
-function ApproverReview({ requestId, requester, requesterInitials, requesterColor, onBack }: {
-  requestId: string; requester: string; requesterInitials: string; requesterColor: string; onBack: () => void;
+function ReviewFact({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium text-gray-900">{value}</p>
+      {helper && <p className="mt-1 break-all text-xs leading-5 text-gray-500">{helper}</p>}
+    </div>
+  );
+}
+
+function getRequestScopeLabel(request: ApprovalRequest) {
+  return request.by === request.requestedFor ? "Self request" : "Requested on behalf of another user";
+}
+
+function ApprovalDetailsSidebar({
+  request,
+  onClose,
+}: {
+  request: ApprovalRequest;
+  onClose: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 z-30 flex">
+      <div className="zf-scrim flex-1" onClick={onClose} />
+      <aside className="zf-side-panel flex w-full max-w-[620px] flex-col">
+        <div className="zf-side-panel__header shrink-0">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-400">User Role Approval</p>
+            <h2 className="mt-1 text-lg font-semibold text-gray-900">{request.id}</h2>
+            <p className="mt-1 text-sm text-gray-500">View the request details and final decision context.</p>
+          </div>
+          <button onClick={onClose} className="mt-0.5 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="zf-side-panel__body space-y-5">
+          <section className="zf-side-panel__section p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${request.color} text-sm font-bold text-white`}>
+                  {request.initials}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="break-words text-xl font-semibold text-gray-900">{request.access}</h3>
+                  <p className="text-sm text-gray-500 mt-1">Requested for {request.requestedFor}</p>
+                </div>
+              </div>
+              <div className="self-start">
+                <StatusBadge status={request.status} />
+              </div>
+            </div>
+
+            <div className="zf-detail-grid zf-detail-grid--compact zf-detail-grid--triple mt-5 border-t border-dashed border-gray-200 pt-4">
+              <ReviewFact label="Submitted" value={request.submitted} />
+              <ReviewFact label="Access period" value={formatAccessPeriod(request.accessPeriod)} />
+              <ReviewFact label="Access type" value={request.accessType} />
+            </div>
+          </section>
+
+          <section className="zf-side-panel__section px-5 py-5">
+            <h4 className="text-lg font-semibold text-gray-900">Request Details</h4>
+            <div className="zf-detail-grid zf-detail-grid--double mt-4">
+              <ReviewFact label="Requester" value={request.by} helper={request.requesterEmail} />
+              <ReviewFact label="Requested for" value={request.requestedFor} />
+              <ReviewFact label="Current role" value={request.currentRole} />
+              <ReviewFact label="Business area" value={request.department} />
+            </div>
+
+            <section className="border-t border-gray-100 pt-6 mt-6">
+              <div className="flex items-center gap-2">
+                <FileText size={16} className="text-gray-400" />
+                <h4 className="text-lg font-semibold text-gray-900">Business Justification</h4>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-gray-600">{request.reason}</p>
+            </section>
+
+            {request.status === "Rejected" && request.rejectedReason && (
+              <section className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600">Rejected reason</p>
+                <p className="mt-2 text-sm leading-6 text-red-800">{request.rejectedReason}</p>
+              </section>
+            )}
+          </section>
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function ApproverReview({
+  request,
+  onUpdateRequest,
+  onBack,
+}: {
+  request: ApprovalRequest;
+  onUpdateRequest: (requestId: string, updates: Partial<ApprovalRequest>) => void;
+  onBack: () => void;
 }) {
   const [decision, setDecision] = useState<Decision>(null);
   const [rejReason, setRejReason] = useState("");
+  const [infoMessage, setInfoMessage] = useState(
+    "Please share the business justification for this access, the expected duration, and whether this should be temporary or permanent."
+  );
   const [showModal, setShowModal] = useState(false);
-  const [decided, setDecided]    = useState<"approved" | "rejected" | null>(null);
-
-  if (decided) return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-5">
-      <div className={`w-14 h-14 rounded-full flex items-center justify-center ${decided === "approved" ? "bg-green-100" : "bg-red-100"}`}>
-        {decided === "approved" ? <Check size={26} className="text-green-600" /> : <X size={26} className="text-red-600" />}
-      </div>
-      <div className="text-center">
-        <p className="text-base font-semibold text-gray-900">Request {decided === "approved" ? "Approved" : "Rejected"}</p>
-        <p className="text-sm text-gray-500 mt-1">{requestId} has been {decided}.</p>
-      </div>
-      <button onClick={onBack} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Back</button>
-    </div>
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [isEditingPeriod, setIsEditingPeriod] = useState(false);
+  const [draftStartDate, setDraftStartDate] = useState(
+    request.accessPeriod.type === "custom" ? request.accessPeriod.startDate : defaultCustomAccessPeriod.startDate
+  );
+  const [draftEndDate, setDraftEndDate] = useState(
+    request.accessPeriod.type === "custom" ? request.accessPeriod.endDate : defaultCustomAccessPeriod.endDate
   );
 
+  const accessPeriodError = !draftStartDate || !draftEndDate
+    ? "Start date and end date are required."
+    : draftEndDate < draftStartDate
+      ? "End date must be on or after the start date."
+      : "";
+
+  function saveAccessPeriod() {
+    if (accessPeriodError) {
+      return;
+    }
+
+    onUpdateRequest(request.id, {
+      accessPeriod: {
+        type: "custom",
+        startDate: draftStartDate,
+        endDate: draftEndDate,
+      },
+    });
+    setIsEditingPeriod(false);
+  }
+
+  function removeAccessPeriod() {
+    onUpdateRequest(request.id, { accessPeriod: { type: "no-expiry" } });
+    setIsEditingPeriod(false);
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-5 relative">
+    <div className="relative flex-1 overflow-y-auto bg-transparent pb-24">
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-2xl w-[400px] p-6">
+        <div className="fixed inset-0 zf-scrim z-50 flex items-center justify-center">
+          <div className="zf-elevated w-[400px] rounded-2xl p-6">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">
               {decision === "approve" ? "Approve this request?" : "Reject this request?"}
             </h2>
@@ -330,10 +593,19 @@ function ApproverReview({ requestId, requester, requesterInitials, requesterColo
               </div>
             )}
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowModal(false)} className="px-3 py-2 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button onClick={() => { setShowModal(false); setDecided(decision === "approve" ? "approved" : "rejected"); }}
+              <button onClick={() => { setShowModal(false); setRejReason(""); setDecision(null); }} className="zf-btn zf-btn-secondary">Cancel</button>
+              <button onClick={() => {
+                const nextStatus = decision === "approve" ? "Approved" : "Rejected";
+                onUpdateRequest(request.id, {
+                  status: nextStatus,
+                  rejectedReason: decision === "reject" ? rejReason.trim() : undefined,
+                });
+                setShowModal(false);
+                setRejReason("");
+                setDecision(null);
+              }}
                 disabled={decision !== "approve" && !rejReason.trim()}
-                className={`px-3 py-2 text-sm rounded-lg font-medium disabled:opacity-50 ${decision === "approve" ? "bg-green-600 text-white hover:bg-green-700" : "bg-red-600 text-white hover:bg-red-700"}`}>
+                className={`zf-btn disabled:opacity-50 ${decision === "approve" ? "zf-btn-success" : "zf-btn-danger"}`}>
                 Confirm
               </button>
             </div>
@@ -341,96 +613,238 @@ function ApproverReview({ requestId, requester, requesterInitials, requesterColo
         </div>
       )}
 
-      {/* Sub-header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
-            <ChevronRight size={14} className="rotate-180" /> User Role Approvals
-          </button>
-          <span className="text-gray-300">·</span>
-          <span className="text-sm font-semibold text-gray-900">{requestId}</span>
-          <StatusBadge status="Pending Approval" />
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => { setDecision("approve"); setShowModal(true); }} className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium">Approve</button>
-          <button onClick={() => { setDecision("reject");  setShowModal(true); }} className="px-3 py-1.5 text-xs bg-red-600   text-white rounded-lg hover:bg-red-700   font-medium">Reject</button>
-          <button onClick={() => setDecision("info")} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50">Request Info</button>
-        </div>
-      </div>
+      {showInfoModal && (
+        <div className="fixed inset-0 zf-scrim z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-[520px] rounded-2xl zf-elevated">
+            <div className="border-b border-gray-200 px-5 py-4">
+              <h2 className="text-base font-semibold text-gray-900">Request more information</h2>
+              <p className="mt-1 text-sm text-gray-500">Send the extra details the requester needs before approval can proceed.</p>
+            </div>
 
-      <div className="space-y-4 max-w-3xl">
+            <div className="px-5 py-5">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-gray-500">Message</label>
+              <textarea
+                value={infoMessage}
+                onChange={(event) => setInfoMessage(event.target.value)}
+                rows={5}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
+                placeholder="Add the missing information needed from the requester..."
+              />
+            </div>
 
-        {/* Summary card */}
-        <div className="grid grid-cols-2 gap-4 border border-gray-200 rounded-xl p-5">
-          {/* Left: who */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Requested by</p>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className={`w-9 h-9 rounded-full ${requesterColor} text-white text-xs font-bold flex items-center justify-center shrink-0`}>{requesterInitials}</div>
-              <div>
-                <p className="text-sm font-semibold text-gray-900">{requester}</p>
-                <p className="text-xs text-gray-400">Finance · Active</p>
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setShowInfoModal(false)}
+                className="zf-btn zf-btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDecision("info");
+                  setShowInfoModal(false);
+                }}
+                className="zf-btn zf-btn-warning"
+              >
+                Send request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-5xl px-8 py-6">
+        <div className="zf-page-header px-0 pt-0">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <button onClick={onBack} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
+                <ChevronRight size={14} className="rotate-180" /> User Role Approvals
+              </button>
+              <span className="text-gray-300">·</span>
+              <span className="text-sm font-semibold text-gray-900">{request.id}</span>
+            </div>
+            <div>
+              <p className="zf-page-header__eyebrow">Approval Review</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-semibold text-gray-950">{request.access}</h2>
+                <StatusBadge status={request.status} />
+                <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                  {request.accessType}
+                </span>
+              </div>
+            </div>
+            <p className="max-w-3xl text-sm text-gray-500">
+              {request.status === "Pending Approval"
+                ? "Review the request, adjust the access configuration if needed, and take action when ready."
+                : "View the request details and final decision context for this approval."}
+            </p>
+          </div>
+          <div className="zf-page-header__meta text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-500">Submitted</p>
+            <p className="mt-1 text-sm font-medium text-blue-900">{request.submitted}</p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-5">
+            <div className="flex items-start gap-4">
+              <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${request.color} text-sm font-bold text-white`}>
+                {request.initials}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-lg font-semibold text-gray-900">{request.requestedFor}</h3>
+                  <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                    {getRequestScopeLabel(request)}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  {request.currentRole} to {request.access}
+                </p>
               </div>
             </div>
           </div>
-          {/* Right: what */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Role Request</p>
-            <dl className="space-y-2 text-sm">
-              {[
-                ["Role",          "Accounts Payable Manager"],
-                ["Access period", "03 Sep – 30 Sep 2026"],
-                ["Reverts to",    "Employee"],
-                ["Submitted on",  "02 Sep 2026, 03:20 PM"],
-              ].map(([k, v]) => (
-                <div key={k} className="flex gap-3">
-                  <dt className="text-gray-400 w-28 shrink-0">{k}</dt>
-                  <dd className="text-gray-800 font-medium">{v}</dd>
+
+          <div className="divide-y divide-gray-100">
+            <section className="px-6 py-5">
+              <div className="grid gap-x-8 gap-y-5 md:grid-cols-2 xl:grid-cols-4">
+                <ReviewFact label="Requester" value={request.by} helper={request.requesterEmail} />
+                <ReviewFact label="Business area" value={request.department} />
+                <ReviewFact label="Access period" value={formatAccessPeriod(request.accessPeriod)} />
+                <ReviewFact label="Role after expiry" value={getRoleAfterExpiry(request.fallback, request.accessPeriod)} />
+              </div>
+            </section>
+
+            <section className="px-6 py-5">
+              <ReviewSectionTitle title="Why access is needed" />
+              <div className="mt-4 flex items-start gap-3">
+                <div className="mt-0.5 text-gray-400">
+                  <FileText size={16} />
                 </div>
-              ))}
-            </dl>
+                <p className="max-w-3xl text-sm leading-7 text-gray-700">{request.reason}</p>
+              </div>
+            </section>
+
+            {request.status === "Rejected" && request.rejectedReason && (
+              <section className="px-6 py-5">
+                <ReviewSectionTitle title="Rejected reason" />
+                <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+                  <p className="text-sm leading-7 text-red-800">{request.rejectedReason}</p>
+                </div>
+              </section>
+            )}
+
+            <section className="px-6 py-5">
+              <ReviewSectionTitle
+                title="Access configuration"
+                action={
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPeriod((value) => !value)}
+                      className="zf-btn zf-btn-secondary min-h-7 px-2.5 text-[11px]"
+                    >
+                      {isEditingPeriod ? "Close" : request.accessPeriod.type === "custom" ? "Edit period" : "Set period"}
+                    </button>
+                    {request.accessPeriod.type === "custom" && (
+                      <button
+                        type="button"
+                        onClick={removeAccessPeriod}
+                        className="zf-btn zf-btn-secondary min-h-7 border-red-200 px-2.5 text-[11px] text-red-600 hover:bg-red-50"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                }
+              />
+              <div className="mt-5 grid gap-x-8 gap-y-5 md:grid-cols-2">
+                <ReviewFact label="Effective access period" value={formatAccessPeriod(request.accessPeriod)} helper={request.accessPeriod.type === "no-expiry" ? "This access stays active until changed manually." : `Automatic fallback: ${request.fallback}.`} />
+                <ReviewFact label="Role transition" value={`${request.currentRole} → ${request.access}`} helper={`Fallback role: ${getRoleAfterExpiry(request.fallback, request.accessPeriod)}`} />
+              </div>
+              {isEditingPeriod && (
+                <div className="mt-5 border-t border-gray-100 pt-5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-[11px] text-gray-500">Start date</label>
+                      <input
+                        type="date"
+                        value={draftStartDate}
+                        onChange={(event) => setDraftStartDate(event.target.value)}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[11px] text-gray-500">End date</label>
+                      <input
+                        type="date"
+                        value={draftEndDate}
+                        onChange={(event) => setDraftEndDate(event.target.value)}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs outline-none focus:border-blue-400"
+                      />
+                    </div>
+                  </div>
+                  {accessPeriodError && <p className="mt-2 text-[11px] text-red-500">{accessPeriodError}</p>}
+                  <div className="mt-4 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftStartDate(request.accessPeriod.type === "custom" ? request.accessPeriod.startDate : defaultCustomAccessPeriod.startDate);
+                        setDraftEndDate(request.accessPeriod.type === "custom" ? request.accessPeriod.endDate : defaultCustomAccessPeriod.endDate);
+                        setIsEditingPeriod(false);
+                      }}
+                      className="zf-btn zf-btn-secondary text-xs"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveAccessPeriod}
+                      disabled={Boolean(accessPeriodError)}
+                      className="zf-btn zf-btn-primary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Save period
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
         </div>
 
-        {/* Permission change cards */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* Gained */}
-          <div className="border border-green-200 bg-green-50/40 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <p className="text-xs font-semibold text-green-800 uppercase tracking-wide">Access they'll gain</p>
-            </div>
-            <div className="space-y-2">
-              {gainedPerms.map(p => (
-                <div key={p} className="flex items-center gap-2 text-sm text-green-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />{p}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Lost */}
-          <div className="border border-red-200 bg-red-50/40 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </div>
-              <p className="text-xs font-semibold text-red-800 uppercase tracking-wide">Access they'll give up</p>
-            </div>
-            <div className="space-y-2">
-              {lostPerms.length > 0 ? lostPerms.map(p => (
-                <div key={p} className="flex items-center gap-2 text-sm text-red-700">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />{p}
-                </div>
-              )) : (
-                <p className="text-xs text-gray-400 italic">No permissions will be removed.</p>
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 backdrop-blur">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-8 py-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-900">{request.requestedFor}</p>
+              <p className="text-xs text-gray-500">
+                {request.access} · {formatAccessPeriod(request.accessPeriod)}
+              </p>
+              {decision === "info" && request.status === "Pending Approval" && (
+                <p className="mt-1 text-xs text-amber-700">Follow up for clarification before approving.</p>
+              )}
+              {request.status !== "Pending Approval" && (
+                <p className="mt-1 text-xs text-gray-500">
+                  {request.status === "Rejected" && request.rejectedReason ? "Rejection reason captured in the details above." : `This request is ${request.status.toLowerCase()}.`}
+                </p>
               )}
             </div>
+            {request.status === "Pending Approval" && (
+              <div className="flex shrink-0 gap-2">
+                <button onClick={() => setShowInfoModal(true)} className="zf-btn zf-btn-secondary">
+                  Request info
+                </button>
+                <button onClick={() => { setDecision("reject"); setShowModal(true); }} className="zf-btn zf-btn-danger">
+                  Reject
+                </button>
+                <button onClick={() => { setDecision("approve"); setShowModal(true); }} className="zf-btn zf-btn-success">
+                  Approve
+                </button>
+              </div>
+            )}
           </div>
         </div>
-
       </div>
     </div>
   );
@@ -442,28 +856,27 @@ const USER_ROLE_OPTIONS   = ["All Roles", ...Array.from(new Set(usersData.map(u 
 /* ─── Users tab ─── */
 function UsersTab() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [period, setPeriod]     = useState("All");
-  const [status, setStatus]     = useState("All Statuses");
-  const [role,   setRole]       = useState("All Roles");
+  const [role, setRole] = useState("All Roles");
 
-  const filtered = usersData.filter(u => {
-    if (status !== "All Statuses" && u.status !== status) return false;
-    if (role   !== "All Roles"    && u.role   !== role)   return false;
+  const filtered = usersData.filter((user) => {
+    if (role !== "All Roles" && user.role !== role) return false;
     return true;
   });
 
   return (
     <>
       <FilterBar
-        period={period} onPeriod={setPeriod}
-        status={status} onStatus={setStatus}  statusOptions={USER_STATUS_OPTIONS}
-        role={role}     onRole={setRole}       roleOptions={USER_ROLE_OPTIONS}
+        period="All" onPeriod={() => {}}
+        status="All Statuses" onStatus={() => {}} statusOptions={USER_STATUS_OPTIONS}
+        role={role} onRole={setRole} roleOptions={USER_ROLE_OPTIONS}
+        showPeriodFilter={false} showStatusFilter={false}
       />
       <div className="flex-1 overflow-y-auto px-8 pt-5">
-        <table className="w-full text-sm border-collapse">
+        <div className="zf-surface-card overflow-hidden rounded-2xl">
+        <table className="zf-card-table w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-2.5 pr-4 font-medium text-gray-400 text-xs uppercase tracking-wide">
+              <th className="pl-0 text-left py-2.5 pr-4 font-medium text-gray-400 text-xs uppercase tracking-wide">
                 <button className="flex items-center gap-1 hover:text-gray-600">User Details <ChevronDown size={11} /></button>
               </th>
               <th className="text-left py-2.5 pr-4 font-medium text-gray-400 text-xs uppercase tracking-wide">Associated Roles</th>
@@ -474,33 +887,33 @@ function UsersTab() {
           <tbody>
             {filtered.map(user => (
               <tr key={user.name} className="border-b border-gray-100 hover:bg-gray-50 group">
-                <td className="py-3 pr-4">
+                <td className="pl-0 py-4 pr-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full ${user.color} text-white text-xs font-semibold flex items-center justify-center shrink-0`}>{user.initials}</div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <button className="text-blue-600 hover:underline font-medium text-sm">{user.name}</button>
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${user.color} text-sm font-semibold text-white`}>{user.initials}</div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button className="text-left text-blue-600 hover:underline font-medium text-sm">{user.name}</button>
                         {user.badge && (
-                          <span className={`inline-flex items-center gap-1 text-xs font-medium border rounded px-1.5 py-0.5 ${user.badgeColor}`}>
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-md px-2 py-0.5 ${user.badgeColor}`}>
                             <Shield size={10} />{user.badge}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                      <div className="mt-1 flex min-w-0 items-center gap-1 text-xs text-gray-400">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-                        {user.email}
+                        <span className="truncate">{user.email}</span>
                       </div>
                     </div>
                   </div>
                 </td>
-                <td className="py-3 pr-4 text-gray-700 text-sm">{user.role}</td>
-                <td className="py-3 pr-4">
+                <td className="py-4 pr-4 text-gray-700 text-sm">{user.role}</td>
+                <td className="py-4 pr-4">
                   <span className={`inline-flex items-center gap-1 text-xs font-medium border rounded-full px-2 py-0.5 ${user.status === "Active" ? "text-green-700 bg-green-50 border-green-200" : "text-gray-500 bg-gray-50 border-gray-200"}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${user.status === "Active" ? "bg-green-500" : "bg-gray-400"}`} />
                     {user.status}
                   </span>
                 </td>
-                <td className="py-3">
+                <td className="py-4 pr-0">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
                     <div className="relative">
                       <button onClick={() => setOpenMenu(openMenu === user.name ? null : user.name)}
@@ -521,8 +934,10 @@ function UsersTab() {
           </tbody>
         </table>
         {filtered.length === 0 && <p className="py-8 text-sm text-gray-400 text-center">No users match the selected filters.</p>}
+        </div>
         <p className="py-4 text-xs text-gray-400">{filtered.length} users</p>
       </div>
+
     </>
   );
 }
@@ -537,128 +952,169 @@ function FilterBar({
   period, onPeriod,
   status, onStatus, statusOptions,
   role,   onRole,   roleOptions,
+  showViewByLabel = true,
+  showPeriodFilter = true,
+  showStatusFilter = true,
+  showRoleFilter = true,
 }: {
   period: string; onPeriod: (v: string) => void;
   status: string; onStatus: (v: string) => void; statusOptions: string[];
-  role:   string; onRole:   (v: string) => void; roleOptions:   string[];
+  role: string; onRole: (v: string) => void; roleOptions: string[];
+  showViewByLabel?: boolean;
+  showPeriodFilter?: boolean;
+  showStatusFilter?: boolean;
+  showRoleFilter?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-0 px-8 py-2.5 border-b border-gray-100 bg-white shrink-0">
-      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-3">View by:</span>
+    <div className="zf-filterbar flex items-center gap-0 px-8 py-2.5 border-b shrink-0">
+      {showViewByLabel && (
+        <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-3">View by:</span>
+      )}
 
-      {/* Period */}
-      <div className="flex items-center gap-1.5 pr-4 border-r border-gray-200">
-        <span className="text-xs text-gray-500">Period:</span>
-        <div className="relative">
-          <select
-            value={period}
-            onChange={e => onPeriod(e.target.value)}
-            className="appearance-none bg-transparent text-xs font-medium text-gray-700 pr-4 outline-none cursor-pointer hover:text-blue-600"
-          >
-            {PERIOD_OPTIONS.map(o => <option key={o}>{o}</option>)}
-          </select>
-          <ChevronDown size={11} className="absolute right-0 top-0.5 text-gray-400 pointer-events-none" />
+      {showPeriodFilter && (
+        <div className="flex items-center gap-1.5 pr-4 border-r border-gray-200">
+          <span className="text-xs text-gray-500">Period:</span>
+          <div className="relative">
+            <select
+              value={period}
+              onChange={e => onPeriod(e.target.value)}
+              className="appearance-none bg-transparent text-xs font-medium text-gray-700 pr-4 outline-none cursor-pointer hover:text-blue-600"
+            >
+              {PERIOD_OPTIONS.map(o => <option key={o}>{o}</option>)}
+            </select>
+            <ChevronDown size={11} className="absolute right-0 top-0.5 text-gray-400 pointer-events-none" />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Status */}
-      <div className="flex items-center gap-1.5 px-4 border-r border-gray-200">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-        <div className="relative">
-          <select
-            value={status}
-            onChange={e => onStatus(e.target.value)}
-            className="appearance-none bg-transparent text-xs font-medium text-gray-700 pr-4 outline-none cursor-pointer hover:text-blue-600"
-          >
-            {statusOptions.map(o => <option key={o}>{o}</option>)}
-          </select>
-          <ChevronDown size={11} className="absolute right-0 top-0.5 text-gray-400 pointer-events-none" />
+      {showStatusFilter && (
+        <div className="flex items-center gap-1.5 px-4 border-r border-gray-200">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <div className="relative">
+            <select
+              value={status}
+              onChange={e => onStatus(e.target.value)}
+              className="appearance-none bg-transparent text-xs font-medium text-gray-700 pr-4 outline-none cursor-pointer hover:text-blue-600"
+            >
+              {statusOptions.map(o => <option key={o}>{o}</option>)}
+            </select>
+            <ChevronDown size={11} className="absolute right-0 top-0.5 text-gray-400 pointer-events-none" />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Role */}
-      <div className="flex items-center gap-1.5 px-4">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
-          <path d="M12 2a5 5 0 1 1 0 10A5 5 0 0 1 12 2z"/><path d="M20 21a8 8 0 1 0-16 0"/>
-        </svg>
-        <div className="relative">
-          <select
-            value={role}
-            onChange={e => onRole(e.target.value)}
-            className="appearance-none bg-transparent text-xs font-medium text-gray-700 pr-4 outline-none cursor-pointer hover:text-blue-600"
-          >
-            {roleOptions.map(o => <option key={o}>{o}</option>)}
-          </select>
-          <ChevronDown size={11} className="absolute right-0 top-0.5 text-gray-400 pointer-events-none" />
+      {showRoleFilter && (
+        <div className="flex items-center gap-1.5 px-4">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
+            <path d="M12 2a5 5 0 1 1 0 10A5 5 0 0 1 12 2z"/><path d="M20 21a8 8 0 1 0-16 0"/>
+          </svg>
+          <div className="relative">
+            <select
+              value={role}
+              onChange={e => onRole(e.target.value)}
+              className="appearance-none bg-transparent text-xs font-medium text-gray-700 pr-4 outline-none cursor-pointer hover:text-blue-600"
+            >
+              {roleOptions.map(o => <option key={o}>{o}</option>)}
+            </select>
+            <ChevronDown size={11} className="absolute right-0 top-0.5 text-gray-400 pointer-events-none" />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
 
 /* ─── My Approvals tab ─── */
-function MyApprovalsTab() {
-  const [reviewItem, setReviewItem] = useState<typeof myApprovals[number] | null>(null);
-  const [period, setPeriod]         = useState("All");
-  const [status, setStatus]         = useState("All Statuses");
-  const [role,   setRole]           = useState("All Roles");
+function MyApprovalsTab({
+  approvals,
+  onUpdateRequest,
+}: {
+  approvals: ApprovalRequest[];
+  onUpdateRequest: (requestId: string, updates: Partial<ApprovalRequest>) => void;
+}) {
+  const [reviewItemId, setReviewItemId] = useState<string | null>(null);
+  const [detailItemId, setDetailItemId] = useState<string | null>(null);
+  const [status, setStatus] = useState("All Statuses");
 
-  const filtered = myApprovals.filter(r => {
-    if (status !== "All Statuses" && r.status !== status) return false;
-    if (role   !== "All Roles"    && r.access !== role)   return false;
+  const filtered = approvals.filter((request) => {
+    if (status !== "All Statuses" && request.status !== status) return false;
     return true;
   });
+  const reviewItem = reviewItemId ? approvals.find((request) => request.id === reviewItemId) ?? null : null;
+  const detailItem = detailItemId ? approvals.find((request) => request.id === detailItemId) ?? null : null;
+
+  function openApprovalItem(request: ApprovalRequest) {
+    if (request.status === "Pending Approval") {
+      setReviewItemId(request.id);
+      return;
+    }
+    setDetailItemId(request.id);
+  }
 
   if (reviewItem) return (
     <ApproverReview
-      requestId={reviewItem.id}
-      requester={reviewItem.by}
-      requesterInitials={reviewItem.initials}
-      requesterColor={reviewItem.color}
-      onBack={() => setReviewItem(null)}
+      request={reviewItem}
+      onUpdateRequest={onUpdateRequest}
+      onBack={() => setReviewItemId(null)}
     />
   );
 
   return (
     <>
       <FilterBar
-        period={period} onPeriod={setPeriod}
+        period="All" onPeriod={() => {}}
         status={status} onStatus={setStatus} statusOptions={APPROVAL_STATUS_OPTIONS}
-        role={role}     onRole={setRole}      roleOptions={APPROVAL_ROLE_OPTIONS}
+        role="All Roles" onRole={() => {}} roleOptions={APPROVAL_ROLE_OPTIONS}
+        showPeriodFilter={false} showRoleFilter={false}
       />
       <div className="flex-1 overflow-y-auto px-8 pt-5">
-        <table className="w-full text-sm border-collapse">
-          <TableHead cols={["Request ID","Role Requested","Validity","Role After Expiry","Status","Submitted"]} />
+        <div className="zf-surface-card overflow-hidden rounded-2xl">
+        <table className="zf-card-table w-full text-sm border-collapse">
+          <TableHead cols={["Request", "Requested for", "Status", "Submitted"]} />
           <tbody>
-            {filtered.map(r => (
-              <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50 group">
-                <td className="py-3 pr-4">
-                  <button onClick={() => r.status === "Pending Approval" && setReviewItem(r)}
-                    className={`text-xs font-medium ${r.status === "Pending Approval" ? "text-blue-600 hover:underline" : "text-gray-500"}`}>
-                    {r.id}
+            {filtered.map((request) => (
+              <tr key={request.id} className="group border-b border-gray-100 hover:bg-gray-50">
+                <td className="pl-0 py-3 pr-4">
+                  <button onClick={() => openApprovalItem(request)}
+                    className="text-xs font-medium text-blue-600 hover:underline">
+                    {request.id}
                   </button>
+                  <div className="mt-1 text-sm font-medium text-gray-800">{request.access}</div>
+                  <div className="mt-0.5 text-xs text-gray-400">{formatAccessPeriod(request.accessPeriod)}</div>
                 </td>
-                <td className="py-3 pr-4 text-gray-700 text-xs font-medium whitespace-nowrap">{r.access}</td>
-                <td className="py-3 pr-4 text-gray-500 text-xs whitespace-nowrap">{r.validity}</td>
-                <td className="py-3 pr-4 text-gray-500 text-xs">{r.fallback}</td>
-                <td className="py-3 pr-4"><StatusBadge status={r.status} /></td>
-                <td className="py-3 pr-4 text-gray-400 text-xs whitespace-nowrap">{r.submitted}</td>
-                <td className="py-3">
-                  {r.status === "Pending Approval" && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setReviewItem(r)} className="text-[11px] text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 rounded px-2 py-1 font-medium">Review</button>
-                    </div>
-                  )}
+                <td className="py-3 pr-4">
+                  <div className="text-sm font-medium text-gray-800">{request.requestedFor}</div>
+                  <div className="mt-0.5 text-xs text-gray-400">{request.by}</div>
+                </td>
+                <td className="py-3 pr-4"><StatusBadge status={request.status} /></td>
+                <td className="py-3 pr-4 text-xs whitespace-nowrap text-gray-400">{request.submitted}</td>
+                <td className="py-3 pr-0">
+                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      onClick={() => openApprovalItem(request)}
+                      className={`rounded px-2 py-1 text-[11px] font-medium ${request.status === "Pending Approval" ? "border border-green-200 bg-green-50 text-green-700 hover:bg-green-100" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"}`}
+                    >
+                      {request.status === "Pending Approval" ? "Review" : "View details"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <p className="py-8 text-sm text-gray-400 text-center">No approvals match the selected filters.</p>}
+        {filtered.length === 0 && <p className="py-8 text-center text-sm text-gray-400">No approvals match the selected filters.</p>}
+        </div>
         <p className="py-4 text-xs text-gray-400">{filtered.length} request{filtered.length !== 1 ? "s" : ""}</p>
       </div>
+
+      {detailItem && (
+        <ApprovalDetailsSidebar
+          request={detailItem}
+          onClose={() => setDetailItemId(null)}
+        />
+      )}
     </>
   );
 }
@@ -669,8 +1125,15 @@ interface Props { onNavigate: (s: Screen) => void }
 export default function UsersScreen({ onNavigate: _onNavigate }: Props) {
   const [tab, setTab]               = useState<"users" | "my-approvals">("users");
   const [showInvite, setShowInvite] = useState(false);
+  const [approvals, setApprovals]   = useState(myApprovals);
 
-  const pendingCount = myApprovals.filter(r => r.status === "Pending Approval").length;
+  const pendingCount = approvals.filter(r => r.status === "Pending Approval").length;
+
+  function updateApprovalRequest(requestId: string, updates: Partial<ApprovalRequest>) {
+    setApprovals((current) => current.map((request) => (
+      request.id === requestId ? { ...request, ...updates } : request
+    )));
+  }
 
   const tabs = [
     { key: "users",        label: "Users"       },
@@ -708,7 +1171,9 @@ export default function UsersScreen({ onNavigate: _onNavigate }: Props) {
       </div>
 
       {tab === "users"        && <UsersTab />}
-      {tab === "my-approvals" && <MyApprovalsTab />}
+      {tab === "my-approvals" && (
+        <MyApprovalsTab approvals={approvals} onUpdateRequest={updateApprovalRequest} />
+      )}
     </div>
   );
 }

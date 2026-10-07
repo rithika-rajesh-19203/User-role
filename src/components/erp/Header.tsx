@@ -23,8 +23,8 @@ function OrgPanel({
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/25" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full z-50 w-[320px] bg-white shadow-2xl border-l border-gray-200 flex flex-col">
+      <div className="zf-scrim fixed inset-0 z-40" onClick={onClose} />
+      <div className="zf-elevated fixed top-0 right-0 h-full z-50 w-[320px] border-l flex flex-col">
         <div className="px-5 pt-5 pb-4 border-b border-gray-100">
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -100,8 +100,8 @@ function UserPanel({
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/25" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full z-50 w-[340px] bg-white shadow-2xl border-l border-gray-200 overflow-y-auto flex flex-col">
+      <div className="zf-scrim fixed inset-0 z-40" onClick={onClose} />
+      <div className="zf-elevated fixed top-0 right-0 h-full z-50 w-[340px] border-l overflow-y-auto flex flex-col">
         <div className="px-5 pt-5 pb-4 border-b border-gray-100 relative shrink-0">
           <button
             onClick={onClose}
@@ -211,7 +211,13 @@ function UserPanel({
   );
 }
 
-export default function Header({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+export default function Header({
+  onNavigate,
+  onOpenRequestAccess,
+}: {
+  onNavigate: (screen: Screen) => void;
+  onOpenRequestAccess: () => void;
+}) {
   const [showOrg, setShowOrg] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
 
@@ -232,7 +238,7 @@ export default function Header({ onNavigate }: { onNavigate: (screen: Screen) =>
   }
 
   return (
-    <div className="h-14 bg-white border-b border-gray-200 flex items-center px-4 gap-3 shrink-0 z-10 relative">
+    <div className="zf-topbar h-14 border-b flex items-center px-4 gap-3 shrink-0 z-10 relative">
       <div className="flex items-center gap-2 w-[220px] shrink-0">
         <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -251,7 +257,7 @@ export default function Header({ onNavigate }: { onNavigate: (screen: Screen) =>
       </div>
 
       <div className="flex-1 flex justify-center">
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 w-80 text-sm text-gray-400">
+        <div className="flex items-center gap-2 rounded-lg border border-[#dbe3ee] bg-[#f7f9fc] px-3 py-1.5 w-80 text-sm text-slate-400">
           <Search size={13} />
           <span>Search settings</span>
           <span className="ml-auto text-xs bg-gray-200 rounded px-1.5 py-0.5 text-gray-500">/ /</span>
@@ -261,7 +267,7 @@ export default function Header({ onNavigate }: { onNavigate: (screen: Screen) =>
       <div className="ml-auto flex items-center gap-2">
         <button
           onClick={openOrg}
-          className={`flex items-center gap-1.5 text-sm font-medium rounded-lg px-2.5 py-1.5 transition-colors ${showOrg ? "bg-blue-50 text-blue-700" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex items-center gap-1.5 text-sm font-medium rounded-md px-2.5 py-1.5 transition-colors ${showOrg ? "bg-[#eef4ff] text-[#2959d6]" : "text-slate-700 hover:bg-slate-100"}`}
         >
           {ORG_NAME}
           <ChevronDown size={13} className={`transition-transform ${showOrg ? "rotate-180 text-blue-500" : "text-gray-400"}`} />
@@ -269,7 +275,7 @@ export default function Header({ onNavigate }: { onNavigate: (screen: Screen) =>
 
         <button
           onClick={openUser}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${showPanel ? "bg-blue-100 ring-2 ring-blue-400" : "bg-gray-100 hover:bg-gray-200"}`}
+          className={`w-8 h-8 rounded-md border border-[#dbe3ee] flex items-center justify-center transition-colors ${showPanel ? "bg-[#eef4ff] ring-2 ring-[#93c5fd]" : "bg-[#f7f9fc] hover:bg-slate-100"}`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showPanel ? "#2563eb" : "#6b7280"} strokeWidth="1.8">
             <circle cx="12" cy="8" r="4" />
@@ -277,7 +283,7 @@ export default function Header({ onNavigate }: { onNavigate: (screen: Screen) =>
           </svg>
         </button>
 
-        <button className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5">
+        <button className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 border border-[#dbe3ee] rounded-md px-3 py-1.5 bg-white">
           Close Settings
           <X size={13} className="text-gray-400" />
         </button>
@@ -293,7 +299,10 @@ export default function Header({ onNavigate }: { onNavigate: (screen: Screen) =>
       {showPanel && (
         <UserPanel
           onClose={() => setShowPanel(false)}
-          onOpenRequestAccess={() => navigateAndClose("request-access")}
+          onOpenRequestAccess={() => {
+            setShowPanel(false);
+            onOpenRequestAccess();
+          }}
         />
       )}
     </div>

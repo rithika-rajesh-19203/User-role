@@ -5,5 +5,4 @@ export type Screen =
   | "role-categories"
   | "create-role-category"
   | "role-category-detail"
-  | "request-access"
   | "my-role-requests";

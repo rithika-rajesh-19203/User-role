@@ -34,20 +34,12 @@ export default function RolesScreen({ onNavigate }: Props) {
     <div className="flex-1 overflow-y-auto bg-white">
       <div className="px-8 pt-6 pb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Roles</h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onNavigate("role-categories")}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50"
-          >
-            Role Categories
-          </button>
-          <button
-            onClick={() => onNavigate("new-role")}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
-          >
-            New Role
-          </button>
-        </div>
+        <button
+          onClick={() => onNavigate("new-role")}
+          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+        >
+          New Role
+        </button>
       </div>
 
       {/* Filters */}
@@ -61,9 +53,6 @@ export default function RolesScreen({ onNavigate }: Props) {
             className="bg-transparent text-sm outline-none flex-1 text-gray-700 placeholder-gray-400"
           />
         </div>
-        <button className="flex items-center gap-1.5 text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50">
-          <Filter size={12} /> Role Category
-        </button>
         <button className="flex items-center gap-1.5 text-sm border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50">
           <Filter size={12} /> Role Type
         </button>
