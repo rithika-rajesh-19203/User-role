@@ -3,6 +3,7 @@ import {
   Search, X, ChevronLeft, ChevronRight, ChevronDown, LogOut, MessageSquare, Mail, Phone, Check,
 } from "lucide-react";
 import type { Screen } from "./types";
+import VersionMenu from "./VersionMenu";
 
 const CURRENT_ROLE = "Admin";
 const ORG_NAME = "AdventNet Org";
@@ -265,6 +266,7 @@ export default function Header({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
+        <VersionMenu />
         <button
           onClick={openOrg}
           className={`flex items-center gap-1.5 text-sm font-medium rounded-md px-2.5 py-1.5 transition-colors ${showOrg ? "bg-[#eef4ff] text-[#2959d6]" : "text-slate-700 hover:bg-slate-100"}`}

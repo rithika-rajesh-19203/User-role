@@ -1,10 +1,12 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
-import './index.css'
+import { versionFromUrl } from './versioning/versions'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+// Each version is loaded on its own so only its stylesheet reaches the page.
+const loaders = {
+  v1: () => import('./v1/main'),
+  v2: () => import('./v2/main'),
+}
+
+const version = versionFromUrl(window.location.search)
+
+loaders[version]().then(({ mount }) => mount(document.getElementById('root')!))
+

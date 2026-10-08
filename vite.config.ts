@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
+        // v2 screens import the ZF design canon from '@canon' and nothing deeper.
+        '@canon': path.resolve(__dirname, './src/canon'),
       },
     },
     server: {
