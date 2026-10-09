@@ -180,32 +180,43 @@ export default function ApproverReview({
 
         {/* What they are asking for — one label/value list, so every value lines up */}
         <Divider />
-        <Section
-          title="Request details"
-          action={pending ? (
-            <Inline gap={4} className="flex-none">
-              <Button size="sm" emphasis="secondary" onClick={() => setIsEditingPeriod((value) => !value)}>
-                {isEditingPeriod ? "Close" : request.accessPeriod.type === "custom" ? "Edit period" : "Set period"}
-              </Button>
-              {request.accessPeriod.type === "custom" ? (
-                <Button size="sm" emphasis="secondary" intent="danger" onClick={removeAccessPeriod}>Remove</Button>
-              ) : null}
-            </Inline>
-          ) : undefined}
-        >
+        <Section title="Request details">
           <DescriptionList
             items={[
               { label: "Current role", value: request.currentRole },
               { label: "Requested role", value: request.access },
-              { label: "Access period", value: period },
               ...(request.by !== request.requestedFor ? [{ label: "Requested by", value: request.by }] : []),
               { label: "Submitted", value: request.submitted },
             ]}
           />
 
+          {/*  The one editable fact, set apart by a hairline and carrying its
+               own controls. Still a DescriptionList row, so the label and the
+               value line up with the list above.  */}
+          <Divider weight="hairline" />
+          <DescriptionList
+            items={[{
+              label: "Access period",
+              value: (
+                <Inline gap={8} justify="between">
+                  <Text as="span">{period}</Text>
+                  {pending ? (
+                    <Inline gap={4} className="flex-none">
+                      <Button size="sm" emphasis="secondary" onClick={() => setIsEditingPeriod((value) => !value)}>
+                        {isEditingPeriod ? "Close" : request.accessPeriod.type === "custom" ? "Edit period" : "Set period"}
+                      </Button>
+                      {request.accessPeriod.type === "custom" ? (
+                        <Button size="sm" emphasis="secondary" intent="danger" onClick={removeAccessPeriod}>Remove</Button>
+                      ) : null}
+                    </Inline>
+                  ) : null}
+                </Inline>
+              ),
+            }]}
+          />
+
           {isEditingPeriod ? (
             <Stack gap={8}>
-              <Divider />
               <Inline gap={8} align="start">
                 <Stack className="flex-1 min-w-0">
                   <Field

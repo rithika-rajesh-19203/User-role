@@ -52,6 +52,10 @@ export const ICON_NAMES = [
   // ── chrome
   'home', 'apps', 'admin', 'documents',
 
+  // ── the date picker trigger. Added for the role access app (v2): drawn here
+  //    to the house stroke until a Figma export replaces it.
+  'calendar',
+
   // ── ERP modules — the sidebar rail. All eleven measured in md §5.5 / §12.
   'items', 'inventory', 'sales', 'purchases', 'timesheets', 'tax',
   'custom-modules', 'payroll', 'accountant',
@@ -188,7 +192,7 @@ export type IconName = (typeof ICON_NAMES)[number];
  * Kept here rather than deleted silently: `eye` is the obvious glyph for a
  * password reveal and someone will reach for it. It has to be drawn first.
  */
-export const RETIRED_ICON_NAMES = ['calendar', 'eye'] as const;
+export const RETIRED_ICON_NAMES = ['eye'] as const;
 
 /**
  * THE NINE GLYPHS THE MD NEVER NAMES.
@@ -310,6 +314,12 @@ const derivedPaths: Partial<Record<IconName, IconGeometry>> = {
   //  `caret-down-bold` carries over `caret-down`, and enough to read as a
   //  different weight class rather than as a rendering wobble.
   'chevron-right-bold': { d: CHEVRON.right, strokeWidth: CHEVRON_BOLD_WEIGHT },
+  //  Stroked at the house weight, on the 16 grid: a rounded body, the header
+  //  rule and two binding rings. Local to the role access app (v2).
+  calendar: {
+    d: 'M3.5 3.5H12.5C13.0523 3.5 13.5 3.94772 13.5 4.5V12.5C13.5 13.0523 13.0523 13.5 12.5 13.5H3.5C2.94772 13.5 2.5 13.0523 2.5 12.5V4.5C2.5 3.94772 2.94772 3.5 3.5 3.5Z M2.5 6.5H13.5 M5.5 2.25V4.5 M10.5 2.25V4.5',
+    strokeWidth: ICON_STROKE_WEIGHT,
+  },
 };
 
 /**

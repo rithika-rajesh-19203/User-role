@@ -88,7 +88,6 @@ export default function MyRoleRequestsScreen({ onNavigate, onOpenRequestAccess }
                 Users
               </Button>
             </Inline>
-            <Text size="overline" tone="tertiary">Personal Access Queue</Text>
             <Text as="h1" size="heading" weight="medium">My Role Requests</Text>
             <Text tone="secondary">
               Track every submitted request in one place and open any item to review the current decision details.

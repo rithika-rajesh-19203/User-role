@@ -1,7 +1,9 @@
-import type { InputHTMLAttributes } from 'react';
+import { useCallback, useRef } from 'react';
+import type { InputHTMLAttributes, Ref } from 'react';
 import { Icon } from '../../icons';
 import type { IconName } from '../../icons';
 import { cn } from '../../utils/cn';
+import { DatePicker } from '../DatePicker/DatePicker';
 import { applyFormat, MODE, type InputFormat } from './format';
 
 export type { InputFormat };
@@ -61,17 +63,35 @@ export interface InputFieldProps extends Omit<InputHTMLAttributes<HTMLInputEleme
    * symbol as loose text gives the user two things to reassemble.
    */
   suffix?: string;
+  /**
+   * `format="date"` only — the calendar button at the trailing end. On by
+   * default, so every date field gets one; `false` leaves the masked input bare
+   * (a table cell, where the column is too narrow for it).
+   */
+  datePicker?: boolean;
+  ref?: Ref<HTMLInputElement>;
 }
 
 export function InputField({
-  error, icon, iconRight, suffix, disabled, format = 'text', onChange, className, ...rest
+  error, icon, iconRight, suffix, disabled, format = 'text', onChange, className,
+  datePicker = true, ref, ...rest
 }: InputFieldProps) {
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  //  The picker needs the node and so may the caller — one callback feeds both.
+  const setInput = useCallback((node: HTMLInputElement | null) => {
+    inputRef.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref) (ref as { current: HTMLInputElement | null }).current = node;
+  }, [ref]);
+  const showPicker = format === 'date' && datePicker;
   //  §5: `Disabled + error` does not exist in either component, "and that is
   //  defensible — a control the user cannot edit cannot be corrected".
   const invalid = Boolean(error) && !disabled;
 
   return (
     <span
+      ref={boxRef}
       className={cn(
         //  §4.1 / §7: height 34, padding and gap both space/5, radius md.
         'inline-flex items-center gap-5 h-control px-5 w-full',
@@ -120,6 +140,7 @@ export function InputField({
     >
       {icon ? <Icon name={icon} size="md" tone={disabled ? 'disabled' : 'subtle'} /> : null}
       <input
+        ref={setInput}
         disabled={disabled}
         inputMode={MODE[format]}
         //  Filtered here and not on `keydown`: `change` is the one event that
@@ -170,7 +191,8 @@ export function InputField({
         )}
         {...rest}
       />
-      {iconRight ? <Icon name={iconRight} size="md" tone={disabled ? 'disabled' : 'subtle'} /> : null}
+      {iconRight && !showPicker ? <Icon name={iconRight} size="md" tone={disabled ? 'disabled' : 'subtle'} /> : null}
+      {showPicker ? <DatePicker inputRef={inputRef} anchorRef={boxRef} disabled={disabled} /> : null}
       {suffix ? (
         //  Divided from the value, so a long number cannot run into its unit.
         //  `flex-none` — the unit never shrinks; the value does.

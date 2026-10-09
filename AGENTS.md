@@ -17,7 +17,7 @@ This is the canonical project structure. Start with task-relevant files below. O
 - `src/versioning/versions.ts` - The version list and URL helpers. Each version has its own version dropdown beside the org button (`src/v1/components/erp/VersionMenu.tsx`, `src/v2/account/VersionMenu.tsx`)
 - `src/v1/` - v1, the original UI: `App.tsx`, `components/erp/`, and its own `index.css`. Frozen; do not change it when working on a newer version
 - `src/v2/` - v2, the same app rebuilt with the ZF Design Canon: `App.tsx` (routing + shell chrome), `Frame.tsx` (the `SettingsShell` every screen renders in), `screens/`, `account/`, `data/`, and its own `index.css`
-- `src/canon/` - The ZF Design Canon (copied from the canon repo, stories excluded). Imported as `'@canon'` only. Local additions: an `actions` slot on `SettingsBar` and `barActions` on `SettingsShell`
+- `src/canon/` - The ZF Design Canon (copied from the canon repo, stories excluded). Imported as `'@canon'` only. Local additions: an `actions` slot on `SettingsBar` and `barActions` on `SettingsShell`; a `DatePicker` (calendar popover) that `InputField` shows at the trailing end of every `format="date"` field (opt out with `datePicker={false}`); a `calendar` icon; fixes so a closed `SidePanel` stays hidden and Escape inside an overlay does not close settings
 
 ## UI versions
 
