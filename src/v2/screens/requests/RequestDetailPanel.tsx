@@ -24,6 +24,9 @@ function Decision({ request }: { request: RoleRequestRecord }) {
   if (request.status === "Approved") {
     return <Banner tone="success">This request was approved. {request.requestedRole} access is active for {request.validity === "No expiry" ? "an unlimited period" : request.validity}.</Banner>;
   }
+  if (request.status === "Cancelled") {
+    return <Banner tone="warning">You cancelled this request. Approvers can no longer act on it.</Banner>;
+  }
   if (request.status === "Pending Approval") {
     return <Banner tone="info">This request is waiting for an approver's decision.</Banner>;
   }

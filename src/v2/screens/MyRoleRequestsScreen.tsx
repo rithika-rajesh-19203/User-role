@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Avatar, Button, Inline, Select, Stack, StatusBadge, Table, Text } from "@canon";
-import type { TableColumn, TableSort } from "@canon";
+import { Avatar, Banner, Button, Inline, Menu, Modal, Select, Stack, StatusBadge, Table, Text } from "@canon";
+import type { MenuEntry, TableColumn, TableSort } from "@canon";
 import Frame from "../Frame";
 import type { ScreenProps } from "../types";
 import { MY_ROLE_REQUESTS, REQUEST_STATUS } from "../data/requests";
@@ -14,6 +14,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "Pending Approval", label: "Pending Approval" },
   { id: "Approved", label: "Approved" },
   { id: "Rejected", label: "Rejected" },
+  { id: "Cancelled", label: "Cancelled" },
 ];
 
 /** Submission order — the data is newest first, and "03 Sep 2026, 09:18 AM" does not sort as a string. */
@@ -27,8 +28,15 @@ const COMPARE: Record<string, (a: RoleRequestRecord, b: RoleRequestRecord) => nu
   submitted: (a, b) => (ORDER.get(b.id) ?? 0) - (ORDER.get(a.id) ?? 0),
 };
 
+/** Survives leaving and re-opening the screen, until the page reloads. */
+let sessionRequests: RoleRequestRecord[] = MY_ROLE_REQUESTS;
+
 export default function MyRoleRequestsScreen({ onNavigate, onOpenRequestAccess }: ScreenProps) {
+  const [requests, setRequests] = useState<RoleRequestRecord[]>(() => sessionRequests);
   const [filter, setFilter] = useState<Filter>("all");
+  //  The row whose ⋯ menu is open, and the request waiting on the cancel warning.
+  const [menu, setMenu] = useState<{ request: RoleRequestRecord; anchor: HTMLElement } | null>(null);
+  const [toCancel, setToCancel] = useState<RoleRequestRecord | null>(null);
   const [sort, setSort] = useState<TableSort>({ columnId: "submitted", direction: "desc" });
   const [selected, setSelected] = useState<RoleRequestRecord | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -38,12 +46,33 @@ export default function MyRoleRequestsScreen({ onNavigate, onOpenRequestAccess }
     setDetailOpen(true);
   };
 
+  const cancelRequest = (request: RoleRequestRecord) => {
+    const cancelled = { ...request, status: "Cancelled" as const };
+    sessionRequests = sessionRequests.map((r) => (r.id === request.id ? cancelled : r));
+    setRequests(sessionRequests);
+    //  Keep an open details panel in step with the table.
+    setSelected((current) => (current?.id === request.id ? cancelled : current));
+    setToCancel(null);
+  };
+
+  //  Only a request still waiting on an approver can be withdrawn.
+  const menuEntries = (request: RoleRequestRecord): MenuEntry[] => [
+    { id: "view", label: "View details", onSelect: () => { setMenu(null); open(request); } },
+    {
+      id: "cancel",
+      label: "Cancel request",
+      tone: "danger",
+      disabled: request.status !== "Pending Approval",
+      onSelect: () => { setMenu(null); setToCancel(request); },
+    },
+  ];
+
   const rows = useMemo(() => {
-    const visible = filter === "all" ? MY_ROLE_REQUESTS : MY_ROLE_REQUESTS.filter((r) => r.status === filter);
+    const visible = filter === "all" ? requests : requests.filter((r) => r.status === filter);
     const cmp = COMPARE[sort.columnId] ?? COMPARE.submitted;
     const sorted = [...visible].sort(cmp);
     return sort.direction === "desc" ? sorted.reverse() : sorted;
-  }, [filter, sort]);
+  }, [requests, filter, sort]);
 
   const columns: TableColumn<RoleRequestRecord>[] = [
     {
@@ -73,6 +102,23 @@ export default function MyRoleRequestsScreen({ onNavigate, onOpenRequestAccess }
     {
       id: "submitted", header: "Submitted", sortable: true,
       cell: (r) => <Text as="span" tone="tertiary" className="whitespace-nowrap">{r.submittedAt}</Text>,
+    },
+    {
+      id: "actions", header: "Actions", align: "end",
+      cell: (r) => (
+        <Button
+          emphasis="tertiary"
+          size="sm"
+          icon="more"
+          label={`More actions for ${r.id}`}
+          aria-haspopup="menu"
+          aria-expanded={menu?.request.id === r.id}
+          onClick={(event) => {
+            const anchor = event.currentTarget;
+            setMenu((current) => (current?.request.id === r.id ? null : { request: r, anchor }));
+          }}
+        />
+      ),
     },
   ];
 
@@ -133,6 +179,41 @@ export default function MyRoleRequestsScreen({ onNavigate, onOpenRequestAccess }
           {rows.length} {rows.length === 1 ? "request" : "requests"}
         </Text>
       </Stack>
+
+      <Menu
+        anchor={menu?.anchor ?? null}
+        open={menu !== null}
+        onClose={() => setMenu(null)}
+        label={menu ? `Actions for ${menu.request.id}` : "Request actions"}
+        entries={menu ? menuEntries(menu.request) : []}
+      />
+
+      {/*  The warning. "Cancel anyway" is the destructive confirm, so it is the
+           danger intent; "Keep request" is the safe way out.  */}
+      <Modal
+        open={toCancel !== null}
+        title="Cancel this request?"
+        width="sm"
+        onRequestClose={() => setToCancel(null)}
+        primaryAction={{
+          label: "Cancel anyway",
+          intent: "danger",
+          onSelect: () => toCancel && cancelRequest(toCancel),
+        }}
+        secondaryAction={{ label: "Keep request", onSelect: () => setToCancel(null) }}
+      >
+        {toCancel ? (
+          <Stack gap={6}>
+            <Banner tone="warning">
+              The request you raised will be cancelled. This can't be undone.
+            </Banner>
+            <Text tone="secondary">
+              {toCancel.requestedRole} ({toCancel.id}) for {toCancel.requestedFor} will be withdrawn and
+              approvers will no longer be able to act on it. To get this access later, raise a new request.
+            </Text>
+          </Stack>
+        ) : null}
+      </Modal>
 
       <RequestDetailPanel open={detailOpen} request={selected} onClose={() => setDetailOpen(false)} />
     </Frame>

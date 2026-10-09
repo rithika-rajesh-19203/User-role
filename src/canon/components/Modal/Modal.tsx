@@ -4,6 +4,7 @@ import { Icon } from '../../icons';
 import { Text } from '../../primitives';
 import { cn } from '../../utils/cn';
 import { Button } from '../Button/Button';
+import type { ButtonIntent } from '../Button/Button';
 
 /**
  * MODAL — `design-refs/zf-modal.md`, §2.27. The dialog you *do* something in.
@@ -66,6 +67,11 @@ export interface ModalAction {
   label: string;
   onSelect: () => void;
   disabled?: boolean;
+  /**
+   * The primary button's intent — `danger` for a destructive confirm such as
+   * "Cancel anyway". Added for the role access app (v2); primary only.
+   */
+  intent?: ButtonIntent;
 }
 
 export interface ModalProps {
@@ -311,7 +317,7 @@ export function Modal({
           'bg-surface-default',
         )}>
           {primaryAction ? (
-            <Button disabled={primaryAction.disabled} onClick={primaryAction.onSelect}>
+            <Button intent={primaryAction.intent} disabled={primaryAction.disabled} onClick={primaryAction.onSelect}>
               {primaryAction.label}
             </Button>
           ) : null}

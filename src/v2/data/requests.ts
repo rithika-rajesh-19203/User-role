@@ -6,7 +6,7 @@
  */
 import type { StatusBadgeStatus } from "@canon";
 
-export type RequestStatus = "Pending Approval" | "Approved" | "Rejected" | "Expired";
+export type RequestStatus = "Pending Approval" | "Approved" | "Rejected" | "Expired" | "Cancelled";
 
 export interface RoleRequestRecord {
   id: string;
@@ -31,6 +31,7 @@ export const REQUEST_STATUS: Record<RequestStatus, StatusBadgeStatus> = {
   Approved: "approved",
   Rejected: "failed",
   Expired: "expired",
+  Cancelled: "cancelled",
 };
 
 export const MY_ROLE_REQUESTS: RoleRequestRecord[] = [
